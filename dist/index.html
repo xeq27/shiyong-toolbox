@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="拾用，属于你的开发者工具箱。JSON 格式化、文本对比、备忘录与编码转换，在浏览器里轻松完成。">
+    <meta name="theme-color" content="#167565">
+    <title>拾用 · 个人工具箱</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23167565'/%3E%3Ctext x='8' y='29' fill='white' font-size='28'%3E✳%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js"></script>
+</head>
+<body>
+    <a class="skip" href="#main">跳至主要内容</a>
+    <aside class="sidebar">
+        <a class="brand" href="#"><span class="brand-mark">✳</span><span>拾用<span class="brand-en">TOOLBOX</span></span></a>
+        <div class="nav-label">我的工作台</div>
+        <nav aria-label="工具分类" id="navigation"></nav>
+        <div class="sidebar-note"><span class="small-mark">⌘</span><strong>小工具，大顺手。</strong><p>把琐碎交给工具，<br>把专注留给创造。</p></div>
+        <div class="local-status"><i></i> 本地处理，安心使用</div>
+    </aside>
+    <div class="shell">
+        <header class="topbar"><span>工作台 <span class="breadcrumb">/</span> <strong id="crumb">全部工具</strong></span><span class="top-right">为日常开发而造 <span class="avatar">拾</span></span></header>
+        <main id="main">
+            <section id="home">
+                <div class="intro"><div><div class="eyebrow">YOUR EVERYDAY TOOLKIT</div><h1>顺手的工具，都在这里<span>。</span></h1><p>少一点重复操作，多一点心流时间。</p></div><span class="intro-badge"><i></i> 即开即用 · 无需安装</span></div>
+                <div class="search-wrap"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="搜索工具，例如 JSON、文本、时间戳…" aria-label="搜索工具"><kbd>/</kbd></div>
+                <section class="featured" aria-label="推荐工具"><div><span class="feature-label">最常用的，放在手边</span><h2>让杂乱的 JSON，井井有条。</h2><p>格式化、压缩、校验，一步到位。</p><button class="primary" data-open="json">打开 JSON 工具 <span>↗</span></button></div><div class="code-art" aria-hidden="true"><div class="code-head"><i></i><i></i><i></i><span>workspace.json</span><b>JSON</b></div><pre><span class="code-gray">01</span>  {
+<span class="code-gray">02</span>    <span class="code-green">"name"</span>: <span class="code-orange">"拾用工具箱"</span>,
+<span class="code-gray">03</span>    <span class="code-green">"focus"</span>: <span class="code-orange">"build something good"</span>,
+<span class="code-gray">04</span>    <span class="code-green">"ready"</span>: <span class="code-purple">true</span>
+<span class="code-gray">05</span>  }</pre><span class="code-valid">✓ &nbsp; Valid JSON</span></div></section>
+                <div class="section-heading"><div><h2 id="section-title">全部工具</h2><span id="tool-count"></span></div><span class="section-hint">为每一个小任务，找到好工具</span></div>
+                <div id="filters" class="filters" aria-label="筛选工具"></div>
+                <div id="tool-grid" class="tool-grid"></div>
+                <div id="empty" class="empty" hidden><span>⌕</span><h3>没有找到匹配的工具</h3><p>试试其他关键词，或查看全部工具。</p><button id="reset-search">查看全部工具</button></div>
+                <div class="privacy-strip"><span>♧</span><div><strong>你的数据，只属于你。</strong><p>工具在浏览器中运行，输入内容不会上传。备忘录仅保存在当前浏览器。</p></div><span class="privacy-tag">LOCAL FIRST</span></div>
+            </section>
+            <section id="workspace" hidden></section>
+        </main>
+        <footer><span>✳ &nbsp; 拾用 <span class="footer-muted">· 让日常开发轻一点</span></span><span>用小工具，解决小麻烦。 <span class="version">v1.0</span></span></footer>
+    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
