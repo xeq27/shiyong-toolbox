@@ -1,7 +1,10 @@
-/** Strict, browser-local transforms. Errors are shown next to each workspace. */
+import { formatJsonDetailed } from './json.js';
+
+export { formatJsonDetailed, validateJson } from './json.js';
+
+/** Browser-local transforms. JSON preserves numeric literals and escapes raw string controls. */
 export function formatJson(input, compact = false) {
-    if (!input.trim()) throw new Error('请先输入 JSON 内容。');
-    return JSON.stringify(JSON.parse(input), null, compact ? 0 : 4);
+    return formatJsonDetailed(input, compact).output;
 }
 
 export function encodeText(input, mode, decode = false) {

@@ -1,4 +1,4 @@
-import { formatJson, encodeText, diffLines, timestampToDate, dateToTimestamp } from './tools.js';
+import { formatJsonDetailed, validateJson, encodeText, diffLines, timestampToDate, dateToTimestamp } from './tools.js';
 
 const tools = [
     { id: 'json', title: 'JSON 格式化', en: 'JSON formatter', category: 'dev', symbol: '{ }', color: '#378c70', bg: '#eaf5ee', description: '格式化、压缩与校验，让 JSON 数据清晰易读。', keywords: 'json format 格式化 压缩 校验' },
@@ -50,7 +50,26 @@ function editor(label, id, readonly = false) {
 }
 function transformWorkspace(tool) {
     const isJson = tool.id === 'json';
-    return `<div class="panel"><div class="toolbar"><button class="primary" data-action="transform">${isJson ? '格式化' : '编码'}</button><button data-action="secondary">${isJson ? '压缩' : '解码'}</button><button data-action="example">载入示例</button><button data-action="clear">清空</button><button data-action="copy">复制结果</button></div><div class="editor-grid">${editor(isJson ? 'JSON 输入' : '原始内容', 'input')}${editor('处理结果', 'output', true)}</div><div class="error" id="error" role="alert"></div><p class="hint">${isJson ? '采用标准 JSON 解析。超出 JavaScript 安全整数范围的数字请使用字符串表示，以避免精度变化。' : tool.id === 'url' ? '按 URL 参数进行编解码，使用 encodeURIComponent / decodeURIComponent。' : '使用 UTF-8 文本编码，支持中文和 emoji。'}</p></div>`;
+    return `<div class="panel">
+        <div class="toolbar">
+            <button class="primary" data-action="transform">${isJson ? '格式化' : '编码'}</button>
+            <button data-action="secondary">${isJson ? '压缩' : '解码'}</button>
+            ${isJson ? '<button data-action="validate-json">严格校验</button>' : ''}
+            <button data-action="example">载入示例</button>
+            <button data-action="clear">清空</button>
+            <button data-action="copy">${isJson ? '复制内容' : '复制结果'}</button>
+        </div>
+        <div class="${isJson ? 'json-editor' : 'editor-grid'}">
+            ${editor(isJson ? 'JSON 内容' : '原始内容', 'input')}
+            ${isJson ? '' : editor('处理结果', 'output', true)}
+        </div>
+        <div class="error" id="error" role="alert"></div>
+        ${isJson ? '<p class="hint" id="json-status" role="status" aria-live="polite"></p>' : ''}
+        <p class="hint">${isJson
+            ? '在上方输入 JSON，格式化或压缩后原位显示结果。支持真实换行兼容和数字无损处理；严格校验检查当前内容。'
+            : tool.id === 'url' ? '按 URL 参数进行编解码，使用 encodeURIComponent / decodeURIComponent。'
+                : '使用 UTF-8 文本编码，支持中文和 emoji。'}</p>
+    </div>`;
 }
 function openTool(id) {
     const tool = tools.find(item => item.id === id);
@@ -98,16 +117,41 @@ document.addEventListener('click', async event => {
     const action = button.dataset.action;
     if (!action) return;
     if ($('#error')) $('#error').textContent = '';
+    if ($('#json-status') && action !== 'copy') $('#json-status').textContent = '';
     try {
         const id = location.hash.slice(1);
         if (action === 'back') location.hash = '';
         if (action === 'transform' || action === 'secondary') {
-            $('#output').value = '';
-            $('#output').value = id === 'json' ? formatJson($('#input').value, action === 'secondary') : encodeText($('#input').value, id, action === 'secondary');
+            if (id === 'json') {
+                const formatted = formatJsonDetailed($('#input').value, action === 'secondary');
+                $('#input').value = formatted.output;
+                $('#json-status').textContent = formatted.repairs.length
+                    ? '兼容处理完成：' + formatted.repairs.join(' ')
+                    : '处理完成，输入符合标准 JSON，无需修复。';
+            } else {
+                $('#output').value = '';
+                $('#output').value = encodeText($('#input').value, id, action === 'secondary');
+            }
         }
-        if (action === 'example') { $('#input').value = id === 'json' ? '{"project":"拾用工具箱","tools":["JSON","文本对比"],"localFirst":true}' : '你好，世界 👋'; $('#output').value = ''; }
-        if (action === 'clear') { $('#input').value = ''; $('#output').value = ''; }
-        if (action === 'copy') { if (!$('#output').value) throw new Error('暂无可复制的结果。'); await navigator.clipboard.writeText($('#output').value); toast('结果已复制'); }
+        if (action === 'validate-json') {
+            validateJson($('#input').value);
+            $('#json-status').textContent = '严格校验通过，输入符合标准 JSON。';
+        }
+        if (action === 'example') {
+            $('#input').value = id === 'json'
+                ? '{"project":"拾用工具箱","tools":["JSON","文本对比"],"localFirst":true}' : '你好，世界 👋';
+            if ($('#output')) $('#output').value = '';
+        }
+        if (action === 'clear') {
+            $('#input').value = '';
+            if ($('#output')) $('#output').value = '';
+        }
+        if (action === 'copy') {
+            const content = id === 'json' ? $('#input').value : $('#output').value;
+            if (!content) throw new Error('暂无可复制的内容。');
+            await navigator.clipboard.writeText(content);
+            toast('内容已复制');
+        }
         if (action === 'compare') {
             $('#diff-results').replaceChildren(); $('#diff-summary').textContent = '正在对比…';
             const lines = diffLines($('#before').value, $('#after').value);
@@ -128,6 +172,10 @@ document.addEventListener('click', async event => {
 });
 document.addEventListener('input', event => {
     if (event.target.id === 'search') renderHome();
+    if (event.target.id === 'input' && location.hash === '#json') {
+        $('#error').textContent = '';
+        $('#json-status').textContent = '';
+    }
     if (event.target.id === 'note-title' || event.target.id === 'note-content') {
         const note = notes.find(item => item.id === selectedNote);
         if (!note) return;
