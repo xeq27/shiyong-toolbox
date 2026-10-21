@@ -1,18 +1,15 @@
 import { formatJson, encodeText, diffLines, timestampToDate, dateToTimestamp } from './tools.js';
 
 const tools = [
-    { id: 'json', title: 'JSON 格式化', en: 'JSON formatter', category: 'dev', symbol: '{ }', color: '#378c70', bg: '#eaf5ee', description: '格式化、压缩与校验，让 JSON 数据清晰易读。', keywords: 'json format 格式化 压缩 校验' },
-    { id: 'diff', title: '文本对比', en: 'Text diff', category: 'text', symbol: '⇄', color: '#6689b9', bg: '#edf2fa', description: '逐行比较两段文本，快速发现每一处不同。', keywords: 'diff 文本 对比 差异' },
-    { id: 'notes', title: '备忘录', en: 'Quick notes', category: 'productivity', symbol: '▤', color: '#b78b45', bg: '#fbf4e6', description: '随手记录灵感与待办，自动保存每一个想法。', keywords: 'notes memo 备忘 记录 笔记' },
-    { id: 'base64', title: 'Base64 编解码', en: 'Base64 encoder', category: 'dev', symbol: 'B₆₄', color: '#8a78b3', bg: '#f2eef9', description: '文本与 Base64 相互转换，支持中文与 emoji。', keywords: 'base64 编码 解码 中文' },
-    { id: 'url', title: 'URL 编解码', en: 'URL encoder', category: 'dev', symbol: '↗', color: '#569da0', bg: '#eaf5f5', description: '轻松编码与解码 URL 参数，告别乱码困扰。', keywords: 'url encode decode 链接 编码 解码' },
-    { id: 'time', title: '时间戳转换', en: 'Timestamp converter', category: 'dev', symbol: '◷', color: '#be816b', bg: '#faf0eb', description: '时间戳与日期互转，支持秒级和毫秒级精度。', keywords: 'timestamp 时间 日期 秒 毫秒' }
+    { id: 'json', title: 'JSON 格式化', en: 'JSON formatter', symbol: '{ }', description: '格式化、压缩与校验 JSON 数据。', keywords: 'json format 格式化 压缩 校验' },
+    { id: 'diff', title: '文本对比', en: 'Text diff', symbol: '⇄', description: '逐行比较文本，标记新增与删除。', keywords: 'diff 文本 对比 差异' },
+    { id: 'notes', title: '备忘录', en: 'Quick notes', symbol: '▤', description: '随手记录，自动保存到当前浏览器。', keywords: 'notes memo 备忘 记录 笔记' },
+    { id: 'base64', title: 'Base64 编解码', en: 'Base64 encoder', symbol: 'B₆₄', description: '文本与 Base64 互转，支持中文。', keywords: 'base64 编码 解码 中文' },
+    { id: 'url', title: 'URL 编解码', en: 'URL encoder', symbol: '↗', description: '编码或解码 URL 参数。', keywords: 'url encode decode 链接 编码 解码' },
+    { id: 'time', title: '时间戳转换', en: 'Timestamp converter', symbol: '◷', description: '日期与时间戳互转，支持秒和毫秒。', keywords: 'timestamp 时间 日期 秒 毫秒' }
 ];
-const categories = [ ['all', '全部工具', '▦'], ['favorites', '我的收藏', '☆'], ['dev', '编码开发', '⌘'], ['text', '文本处理', '≡'], ['productivity', '效率办公', '▤'] ];
 const $ = selector => document.querySelector(selector);
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-let category = 'all';
-let favorites = readStored('shiyong-favorites', [], value => Array.isArray(value) && value.every(id => typeof id === 'string'));
 let notes = readStored('shiyong-notes', [], value => Array.isArray(value) && value.every(note => note && typeof note.id === 'string' && typeof note.title === 'string' && typeof note.content === 'string'));
 let selectedNote = notes[0]?.id;
 let toastTimer;
@@ -33,16 +30,13 @@ function toast(message) {
     toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), 3000);
 }
 function renderHome() {
-    $('#navigation').innerHTML = categories.map(([id, title, icon], index) => `${index === 2 ? '<div class="nav-divider"></div>' : ''}<button class="nav-button ${category === id ? 'active' : ''}" data-category="${id}" aria-pressed="${category === id}"><span class="nav-icon">${icon}</span>${title}${id === 'all' ? `<span class="nav-count">${tools.length}</span>` : ''}</button>`).join('');
-    $('#filters').innerHTML = categories.filter(([id]) => id !== 'favorites').map(([id, title]) => `<button data-category="${id}" class="${category === id ? 'active' : ''}" aria-pressed="${category === id}">${title}</button>`).join('');
     const query = $('#search').value.trim().toLowerCase();
-    const visible = tools.filter(tool => (category === 'all' || (category === 'favorites' ? favorites.includes(tool.id) : category === tool.category)) && `${tool.title} ${tool.keywords}`.toLowerCase().includes(query));
-    $('#section-title').textContent = query ? '搜索结果' : categories.find(([id]) => id === category)[1];
-    $('#crumb').textContent = categories.find(([id]) => id === category)[1];
-    $('#tool-count').textContent = `${visible.length} 个`;
-    $('#tool-grid').innerHTML = visible.map(tool => `<article class="tool-card" style="--icon-bg:${tool.bg};--icon-color:${tool.color}"><button class="favorite ${favorites.includes(tool.id) ? 'selected' : ''}" data-favorite="${tool.id}" aria-label="${favorites.includes(tool.id) ? '取消收藏' : '收藏'}${tool.title}" aria-pressed="${favorites.includes(tool.id)}">${favorites.includes(tool.id) ? '★' : '☆'}</button><button class="tool-open" data-open="${tool.id}"><span class="tool-symbol" aria-hidden="true">${tool.symbol}</span><h3>${tool.title}</h3><p>${tool.description}</p><span class="card-bottom"><span>${categories.find(([id]) => id === tool.category)[1]}</span><span>${tool.en}</span><b>↗</b></span></button></article>`).join('');
+    const visible = tools.filter(tool => `${tool.title} ${tool.keywords}`.toLowerCase().includes(query));
+    $('#section-title').firstChild.textContent = query ? '搜索结果 ' : '全部工具 ';
+    $('#crumb').textContent = '个人工具箱';
+    $('#tool-count').textContent = visible.length;
+    $('#tool-grid').innerHTML = visible.map(tool => `<button class="tool-card" data-open="${tool.id}"><span class="tool-symbol" aria-hidden="true">${tool.symbol}</span><span class="tool-arrow" aria-hidden="true">↗</span><span class="tool-title">${tool.title}</span><span class="tool-description">${tool.description}</span></button>`).join('');
     $('#empty').hidden = visible.length !== 0;
-    $('.featured').hidden = category !== 'all' || query.length > 0;
 }
 
 function editor(label, id, readonly = false) {
@@ -63,7 +57,7 @@ function openTool(id) {
     if (id === 'diff') body = `<div class="panel"><div class="toolbar"><button class="primary" data-action="compare">开始对比</button><button data-action="swap">交换两侧</button><button data-action="diff-example">载入示例</button><button data-action="diff-clear">清空</button></div><div class="editor-grid">${editor('原始文本', 'before')}${editor('修改后的文本', 'after')}</div><div class="error" id="error" role="alert"></div></div><div class="panel"><div class="diff-summary" id="diff-summary">输入两段文本，查看逐行差异。</div><div class="diff-results" id="diff-results"></div></div>`;
     if (id === 'notes') body = `<div class="panel"><div class="toolbar"><button class="primary" data-action="new-note">＋ 新建笔记</button><span class="note-saved" id="note-saved">仅保存在当前浏览器</span><button class="danger" data-action="delete-note">删除笔记</button></div><div class="notes-layout"><div class="note-list" id="note-list"></div><div id="note-editor"></div></div><p class="hint">清除网站数据会删除本地笔记。重要内容请及时复制备份，不同设备之间不会同步。</p></div>`;
     if (id === 'time') body = `<div class="editor-grid"><div class="panel"><h3>时间戳 → 日期</h3><label class="field-label" for="timestamp">输入整数时间戳</label><input class="timestamp-input" type="text" inputmode="numeric" id="timestamp" placeholder="例如 1700000000"><div class="toolbar"><label>单位 <select id="unit"><option value="s">秒（s）</option><option value="ms">毫秒（ms）</option></select></label><button class="primary" data-action="to-date">转换</button><button data-action="now">当前时间</button></div><div class="time-result" id="date-result">等待转换</div></div><div class="panel"><h3>日期 → 时间戳</h3><label class="field-label" for="date-input">选择本地日期和时间</label><input class="timestamp-input" type="datetime-local" id="date-input" step="1"><div class="toolbar"><button class="primary" data-action="to-timestamp">转换</button></div><div class="time-result" id="timestamp-result">等待转换</div></div></div><div class="error" id="error" role="alert"></div><p class="hint">本地时间采用当前设备时区：${escape(Intl.DateTimeFormat().resolvedOptions().timeZone)}。UTC 结果同时展示。</p>`;
-    $('#workspace').innerHTML = `<button class="back" data-action="back">← 返回工具箱</button><div class="workspace-header"><div class="eyebrow">${tool.en.toUpperCase()}</div><h1>${tool.title}</h1><p>${tool.description}</p></div>${body}`;
+    $('#workspace').innerHTML = `<button class="back" data-action="back">← 返回工具箱</button><div class="workspace-header"><h1>${tool.title}</h1><p>${tool.description}</p></div>${body}`;
     if (id === 'notes') renderNotes();
     window.scrollTo({ top: 0 });
     $('.back').focus({ preventScroll: true });
@@ -87,13 +81,7 @@ function route() {
 document.addEventListener('click', async event => {
     const button = event.target.closest('button');
     if (!button) return;
-    if (button.dataset.category) { category = button.dataset.category; if (location.hash) location.hash = ''; else renderHome(); }
     if (button.dataset.open) location.hash = button.dataset.open;
-    if (button.dataset.favorite) {
-        const id = button.dataset.favorite;
-        favorites = favorites.includes(id) ? favorites.filter(value => value !== id) : [...favorites, id];
-        persist('shiyong-favorites', favorites); renderHome();
-    }
     if (button.dataset.note) { selectedNote = button.dataset.note; renderNotes(); }
     const action = button.dataset.action;
     if (!action) return;
@@ -138,7 +126,7 @@ document.addEventListener('input', event => {
         if (item) item.querySelector('strong').textContent = note.title || '未命名笔记';
     }
 });
-$('#reset-search').addEventListener('click', () => { category = 'all'; $('#search').value = ''; renderHome(); });
+$('#reset-search').addEventListener('click', () => { $('#search').value = ''; renderHome(); });
 document.addEventListener('keydown', event => {
     if (event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) && !location.hash) { event.preventDefault(); $('#search').focus(); }
 });
