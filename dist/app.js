@@ -1,3 +1,5 @@
+import { createNoteId, copyText } from './browser.js';
+import { checkBackendConnection } from './backend.js';
 import { formatJsonDetailed, validateJson, encodeText, diffLines, timestampToDate, dateToTimestamp } from './tools.js';
 
 const tools = [
@@ -137,7 +139,7 @@ document.addEventListener('click', async event => {
         if (action === 'copy') {
             const content = id === 'json' ? $('#input').value : $('#output').value;
             if (!content) throw new Error('暂无可复制的内容。');
-            await navigator.clipboard.writeText(content);
+            await copyText(content);
             toast('内容已复制');
         }
         if (action === 'compare') {
@@ -151,7 +153,7 @@ document.addEventListener('click', async event => {
         if (action === 'swap') { const text = $('#before').value; $('#before').value = $('#after').value; $('#after').value = text; $('#diff-results').replaceChildren(); $('#diff-summary').textContent = '两侧已交换，点击开始对比刷新结果。'; }
         if (action === 'diff-example') { $('#before').value = 'const toolbox = {\n    name: "拾用",\n    version: "1.0"\n};'; $('#after').value = 'const toolbox = {\n    name: "拾用",\n    version: "1.1",\n    localFirst: true\n};'; $('#diff-results').replaceChildren(); $('#diff-summary').textContent = '示例已载入，点击开始对比。'; }
         if (action === 'diff-clear') { $('#before').value = ''; $('#after').value = ''; $('#diff-results').replaceChildren(); $('#diff-summary').textContent = '输入两段文本，查看逐行差异。'; }
-        if (action === 'new-note') { const note = { id: crypto.randomUUID(), title: '', content: '', updated: Date.now() }; notes.unshift(note); selectedNote = note.id; persist('shiyong-notes', notes); renderNotes(); $('#note-title').focus(); }
+        if (action === 'new-note') { const note = { id: createNoteId(), title: '', content: '', updated: Date.now() }; notes.unshift(note); selectedNote = note.id; persist('shiyong-notes', notes); renderNotes(); $('#note-title').focus(); }
         if (action === 'delete-note' && confirm('确定删除这条笔记？删除后无法恢复。')) { notes = notes.filter(note => note.id !== selectedNote); selectedNote = notes[0]?.id; persist('shiyong-notes', notes); renderNotes(); }
         if (action === 'now') { $('#timestamp').value = String($('#unit').value === 's' ? Math.floor(Date.now() / 1000) : Date.now()); }
         if (action === 'to-date' || action === 'now') { $('#date-result').textContent = '等待转换'; const date = timestampToDate($('#timestamp').value, $('#unit').value); $('#date-result').innerHTML = `<strong>本地时间</strong><br>${escape(date.local)}<br><strong>UTC</strong><br>${escape(date.iso)}`; }
@@ -181,3 +183,22 @@ document.addEventListener('keydown', event => {
 window.addEventListener('hashchange', route);
 renderHome();
 route();
+
+// Connection failures must not interrupt local tools or localStorage notes.
+async function refreshBackendConnection() {
+    const status = $('#backend-status');
+    const button = $('#check-backend');
+    button.disabled = true;
+    status.textContent = '正在检查 Java / MySQL…';
+    try {
+        const connection = await checkBackendConnection();
+        status.textContent = connection.java
+            ? `Java 已连接 · MySQL ${connection.mysql ? '已连接' : '未连接'}`
+            : 'Java 未连接，本地工具仍可使用';
+        status.dataset.connected = String(connection.java && connection.mysql);
+    } finally {
+        button.disabled = false;
+    }
+}
+$('#check-backend').addEventListener('click', refreshBackendConnection);
+refreshBackendConnection();

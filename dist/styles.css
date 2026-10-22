@@ -84,3 +84,7 @@ footer { padding: 28px 0; color: #7b8980; font-size: 12px; }
 }
 
 .json-editor textarea { min-height: clamp(300px, 50vh, 640px); }
+
+.backend-connection { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.backend-connection button { font-size: 12px; padding: 6px 10px; }
+#backend-status[data-connected="true"] { color: var(--accent); }

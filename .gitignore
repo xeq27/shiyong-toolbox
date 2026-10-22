@@ -2,3 +2,21 @@ node_modules/
 *.tar.gz
 *.log
 .sites-local/
+
+dist/server/
+dist/.openai/
+
+# Local credentials, certificates and runtime configuration must never be committed.
+.env*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+**/secrets/
+**/credentials/
+*.dump
+*.sql.gz
+.openai/

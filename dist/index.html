@@ -31,7 +31,13 @@
             </section>
             <section id="workspace" hidden></section>
         </main>
-        <footer>内容在浏览器本地处理，不上传输入数据。</footer>
+        <footer>
+            <span>内容在浏览器本地处理，不上传输入数据。</span>
+            <div class="backend-connection">
+                <span id="backend-status" role="status" aria-live="polite">正在检查 Java / MySQL…</span>
+                <button id="check-backend" type="button">检查连接</button>
+            </div>
+        </footer>
     </div>
     <div id="toast" role="status" aria-live="polite"></div>
 </body>
