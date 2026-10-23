@@ -13,7 +13,7 @@ const files = new Map();
 for (const filename of ['Dockerfile', 'nginx.conf', 'proxy_params.conf']) {
     files.set(filename, await readFile(path.join(root, 'deploy', filename)));
 }
-for (const filename of ['index.html', 'app.js', 'backend.js', 'browser.js', 'tools.js', 'json.js', 'styles.css']) {
+for (const filename of ['index.html', 'app.js', 'backend.js', 'browser.js', 'tools.js', 'todos.js', 'account.js', 'account-client.js', 'json.js', 'styles.css']) {
     files.set(`public/${filename}`, await readFile(path.join(root, 'dist', filename)));
 }
 files.set('compose.yaml', await readFile(composePath));

@@ -88,3 +88,34 @@ footer { padding: 28px 0; color: #7b8980; font-size: 12px; }
 .backend-connection { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 .backend-connection button { font-size: 12px; padding: 6px 10px; }
 #backend-status[data-connected="true"] { color: var(--accent); }
+
+/* Todo rows share the toolbox palette and keep actions usable on narrow screens. */
+.todo-form { margin-bottom: 22px; }
+.todo-compose { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.todo-compose input { flex: 1 1 240px; min-width: 0; }
+.todo-compose button { min-height: 44px; }
+.todo-status { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+#todo-count { color: var(--accent); font-size: 13px; font-weight: 600; }
+.todo-list { list-style: none; padding: 0; margin: 0 0 22px; }
+.todo-row { display: flex; gap: 16px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.todo-check { display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0; cursor: pointer; }
+.todo-check input { width: 19px; height: 19px; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
+.todo-text { line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; }
+.todo-row.is-done .todo-text { color: var(--muted); text-decoration: line-through; }
+.todo-actions { display: flex; gap: 6px; flex: none; }
+.todo-actions button { font-size: 12px; padding: 8px 10px; min-height: 36px; }
+.todo-actions button[data-todo-action="delete"] { color: #a34c4c; }
+#todo-empty p { color: var(--muted); }
+@media (max-width: 560px) {
+    .todo-row { align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+    .todo-check { flex-basis: 100%; }
+    .todo-actions { margin-left: 31px; }
+}
+
+.account-link { margin-left: auto; color: var(--accent); font-size: 13px; padding: 8px; }
+.account-panel { max-width: 720px; }
+.account-panel h2 { margin-top: 0; font-size: 21px; }
+.account-notice { padding: 14px; background: var(--soft); border-radius: 8px; line-height: 1.9; }
+.account-panel input { display: block; width: 100%; max-width: 420px; padding: 12px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 8px; }
+.account-panel .toolbar { margin-top: 18px; }
+@media (max-width: 560px) { .topbar { flex-wrap: wrap; gap: 6px; } .account-link { font-size: 12px; } }

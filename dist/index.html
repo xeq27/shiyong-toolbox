@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="拾用个人工具箱：JSON 格式化、文本对比、备忘录和常用编码工具。">
+    <meta name="description" content="拾用个人工具箱：JSON 格式化、文本对比、待办清单、备忘录和常用编码工具。">
     <meta name="theme-color" content="#24725b">
     <title>拾用 · 个人工具箱</title>
     <link rel="stylesheet" href="./styles.css">
@@ -14,7 +14,7 @@
     <div class="shell">
         <header class="topbar">
             <a class="brand" href="#" aria-label="拾用工具箱首页"><span class="brand-mark" aria-hidden="true">✳</span>拾用</a>
-            <span id="crumb">个人工具箱</span>
+            <span id="crumb">个人工具箱</span><a id="account-link" class="account-link" href="#account">登录 / 注册</a>
         </header>
         <main id="main" tabindex="-1">
             <section id="home" aria-label="工具列表">
@@ -32,9 +32,9 @@
             <section id="workspace" hidden></section>
         </main>
         <footer>
-            <span>内容在浏览器本地处理，不上传输入数据。</span>
+            <span id="storage-mode">未登录，仅保存在当前浏览器，数据不上云。</span>
             <div class="backend-connection">
-                <span id="backend-status" role="status" aria-live="polite">正在检查 Java / MySQL…</span>
+                <span id="backend-status" role="status" aria-live="polite">未检查后端，本地模式无需连接</span>
                 <button id="check-backend" type="button">检查连接</button>
             </div>
         </footer>

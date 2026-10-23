@@ -1,3 +1,5 @@
+import { account, usesCloud, storageDescription, initializeAccount, mountAccount } from './account.js';
+import { mountTodos } from './todos.js';
 import { createNoteId, copyText } from './browser.js';
 import { checkBackendConnection } from './backend.js';
 import { formatJsonDetailed, validateJson, encodeText, diffLines, timestampToDate, dateToTimestamp } from './tools.js';
@@ -5,7 +7,8 @@ import { formatJsonDetailed, validateJson, encodeText, diffLines, timestampToDat
 const tools = [
     { id: 'json', title: 'JSON 格式化', en: 'JSON formatter', symbol: '{ }', description: '格式化、压缩与校验 JSON 数据。', keywords: 'json format 格式化 压缩 校验' },
     { id: 'diff', title: '文本对比', en: 'Text diff', symbol: '⇄', description: '逐行比较文本，标记新增与删除。', keywords: 'diff 文本 对比 差异' },
-    { id: 'notes', title: '备忘录', en: 'Quick notes', symbol: '▤', description: '随手记录，自动保存到当前浏览器。', keywords: 'notes memo 备忘 记录 笔记' },
+    { id: 'todos', title: '待办清单', en: 'Todo list', symbol: '☑', description: '未登录本地保存，登录后保存到云端。', keywords: 'todo task 待办 清单 任务 完成' },
+    { id: 'notes', title: '备忘录', en: 'Quick notes', symbol: '▤', description: '随手记录，未登录本地保存，登录后上云。', keywords: 'notes memo 备忘 记录 笔记' },
     { id: 'base64', title: 'Base64 编解码', en: 'Base64 encoder', symbol: 'B₆₄', description: '文本与 Base64 互转，支持中文。', keywords: 'base64 编码 解码 中文' },
     { id: 'url', title: 'URL 编解码', en: 'URL encoder', symbol: '↗', description: '编码或解码 URL 参数。', keywords: 'url encode decode 链接 编码 解码' },
     { id: 'time', title: '时间戳转换', en: 'Timestamp converter', symbol: '◷', description: '日期与时间戳互转，支持秒和毫秒。', keywords: 'timestamp 时间 日期 秒 毫秒' }
@@ -68,18 +71,36 @@ function transformWorkspace(tool) {
     </div>`;
 }
 function openTool(id) {
+    if (id === 'account') {
+        $('#home').hidden = true;
+        $('#workspace').hidden = false;
+        $('#crumb').textContent = '账户与数据';
+        document.title = '账户与数据 · 拾用工具箱';
+        $('#workspace').innerHTML = '<button class="back" data-action="back">← 返回工具箱</button><div id="account-workspace"></div>';
+        mountAccount($('#account-workspace'));
+        return;
+    }
     const tool = tools.find(item => item.id === id);
     if (!tool) { location.hash = ''; return; }
     $('#home').hidden = true;
     $('#workspace').hidden = false;
     $('#crumb').textContent = tool.title;
     document.title = `${tool.title} · 拾用工具箱`;
-    let body = transformWorkspace(tool);
+    let body = id === 'todos' ? '<div id="todo-workspace"></div>' : transformWorkspace(tool);
     if (id === 'diff') body = `<div class="panel"><div class="toolbar"><button class="primary" data-action="compare">开始对比</button><button data-action="swap">交换两侧</button><button data-action="diff-example">载入示例</button><button data-action="diff-clear">清空</button></div><div class="editor-grid">${editor('原始文本', 'before')}${editor('修改后的文本', 'after')}</div><div class="error" id="error" role="alert"></div></div><div class="panel"><div class="diff-summary" id="diff-summary">输入两段文本，查看逐行差异。</div><div class="diff-results" id="diff-results"></div></div>`;
     if (id === 'notes') body = `<div class="panel"><div class="toolbar"><button class="primary" data-action="new-note">＋ 新建笔记</button><span class="note-saved" id="note-saved">仅保存在当前浏览器</span><button class="danger" data-action="delete-note">删除笔记</button></div><div class="notes-layout"><div class="note-list" id="note-list"></div><div id="note-editor"></div></div><p class="hint">清除网站数据会删除本地笔记。重要内容请及时复制备份，不同设备之间不会同步。</p></div>`;
     if (id === 'time') body = `<div class="editor-grid"><div class="panel"><h3>时间戳 → 日期</h3><label class="field-label" for="timestamp">输入整数时间戳</label><input class="timestamp-input" type="text" inputmode="numeric" id="timestamp" placeholder="例如 1700000000"><div class="toolbar"><label>单位 <select id="unit"><option value="s">秒（s）</option><option value="ms">毫秒（ms）</option></select></label><button class="primary" data-action="to-date">转换</button><button data-action="now">当前时间</button></div><div class="time-result" id="date-result">等待转换</div></div><div class="panel"><h3>日期 → 时间戳</h3><label class="field-label" for="date-input">选择本地日期和时间</label><input class="timestamp-input" type="datetime-local" id="date-input" step="1"><div class="toolbar"><button class="primary" data-action="to-timestamp">转换</button></div><div class="time-result" id="timestamp-result">等待转换</div></div></div><div class="error" id="error" role="alert"></div><p class="hint">本地时间采用当前设备时区：${escape(Intl.DateTimeFormat().resolvedOptions().timeZone)}。UTC 结果同时展示。</p>`;
     $('#workspace').innerHTML = `<button class="back" data-action="back">← 返回工具箱</button><div class="workspace-header"><h1>${tool.title}</h1><p>${tool.description}</p></div>${body}`;
-    if (id === 'notes') renderNotes();
+    if (id === 'todos') mountTodos(document.querySelector('#todo-workspace'), usesCloud() ? { load: () => account.workspace().todos, save: values => account.save('todos', values) } : null);
+    if (id === 'notes') {
+        $('#note-saved').textContent = usesCloud() ? (account.user ? '云端模式' : '云端连接待恢复') : '仅保存在当前浏览器';
+        $('#workspace .panel > .hint').textContent = storageDescription();
+        if (usesCloud() && !account.user) {
+            $('[data-action="new-note"]').disabled = true;
+            $('#note-editor').textContent = '请打开账户页恢复云端连接，或选择仅本地使用。';
+            $('[data-action="delete-note"]').disabled = true;
+        } else renderNotes();
+    }
     window.scrollTo({ top: 0 });
     $('.back').focus({ preventScroll: true });
 }
@@ -87,7 +108,7 @@ function renderNotes() {
     clearTimeout(noteTimer);
     $('#note-list').innerHTML = notes.map(note => `<button class="note-item ${note.id === selectedNote ? 'active' : ''}" data-note="${escape(note.id)}"><strong>${escape(note.title || '未命名笔记')}</strong><small>${escape(new Date(note.updated).toLocaleDateString('zh-CN'))}</small></button>`).join('');
     const note = notes.find(item => item.id === selectedNote);
-    $('#note-editor').innerHTML = note ? `<label><span class="field-label">笔记标题</span><input class="note-title" id="note-title" maxlength="120" placeholder="未命名笔记" value="${escape(note.title)}"></label><label><span class="field-label">笔记内容</span><textarea class="note-content" id="note-content" placeholder="从一个想法开始…">${escape(note.content)}</textarea></label>` : '<div class="empty"><h3>留住一闪而过的想法</h3><p>点击「新建笔记」，开始第一条记录。</p></div>';
+    $('#note-editor').innerHTML = note ? `<label><span class="field-label">笔记标题</span><input class="note-title" id="note-title" maxlength="120" placeholder="未命名笔记" value="${escape(note.title)}"></label><label><span class="field-label">笔记内容</span><textarea class="note-content" id="note-content" maxlength="100000" placeholder="从一个想法开始…">${escape(note.content)}</textarea></label>` : '<div class="empty"><h3>留住一闪而过的想法</h3><p>点击「新建笔记」，开始第一条记录。</p></div>';
     $('[data-action="delete-note"]').disabled = !note;
 }
 function route() {
@@ -153,8 +174,8 @@ document.addEventListener('click', async event => {
         if (action === 'swap') { const text = $('#before').value; $('#before').value = $('#after').value; $('#after').value = text; $('#diff-results').replaceChildren(); $('#diff-summary').textContent = '两侧已交换，点击开始对比刷新结果。'; }
         if (action === 'diff-example') { $('#before').value = 'const toolbox = {\n    name: "拾用",\n    version: "1.0"\n};'; $('#after').value = 'const toolbox = {\n    name: "拾用",\n    version: "1.1",\n    localFirst: true\n};'; $('#diff-results').replaceChildren(); $('#diff-summary').textContent = '示例已载入，点击开始对比。'; }
         if (action === 'diff-clear') { $('#before').value = ''; $('#after').value = ''; $('#diff-results').replaceChildren(); $('#diff-summary').textContent = '输入两段文本，查看逐行差异。'; }
-        if (action === 'new-note') { const note = { id: createNoteId(), title: '', content: '', updated: Date.now() }; notes.unshift(note); selectedNote = note.id; persist('shiyong-notes', notes); renderNotes(); $('#note-title').focus(); }
-        if (action === 'delete-note' && confirm('确定删除这条笔记？删除后无法恢复。')) { notes = notes.filter(note => note.id !== selectedNote); selectedNote = notes[0]?.id; persist('shiyong-notes', notes); renderNotes(); }
+        if (action === 'new-note') { const note = { id: createNoteId(), title: '', content: '', updated: Date.now() }; const next = [note, ...notes]; if (await saveNotes(next)) { notes = next; selectedNote = note.id; renderNotes(); $('#note-title').focus(); } }
+        if (action === 'delete-note' && confirm('确定删除这条笔记？删除后无法恢复。')) { const next = notes.filter(note => note.id !== selectedNote); if (await saveNotes(next)) { notes = next; selectedNote = notes[0]?.id; renderNotes(); } }
         if (action === 'now') { $('#timestamp').value = String($('#unit').value === 's' ? Math.floor(Date.now() / 1000) : Date.now()); }
         if (action === 'to-date' || action === 'now') { $('#date-result').textContent = '等待转换'; const date = timestampToDate($('#timestamp').value, $('#unit').value); $('#date-result').innerHTML = `<strong>本地时间</strong><br>${escape(date.local)}<br><strong>UTC</strong><br>${escape(date.iso)}`; }
         if (action === 'to-timestamp') { $('#timestamp-result').textContent = '等待转换'; const time = dateToTimestamp($('#date-input').value); $('#timestamp-result').innerHTML = `<strong>秒</strong><br>${time.seconds}<br><strong>毫秒</strong><br>${time.milliseconds}`; }
@@ -170,8 +191,7 @@ document.addEventListener('input', event => {
         const note = notes.find(item => item.id === selectedNote);
         if (!note) return;
         note.title = $('#note-title').value; note.content = $('#note-content').value; note.updated = Date.now();
-        const saved = persist('shiyong-notes', notes);
-        $('#note-saved').textContent = saved ? '已自动保存到当前浏览器' : '保存失败，请复制备份';
+        void saveNotes(notes);
         const item = [...document.querySelectorAll('[data-note]')].find(item => item.dataset.note === selectedNote);
         if (item) item.querySelector('strong').textContent = note.title || '未命名笔记';
     }
@@ -180,8 +200,47 @@ $('#reset-search').addEventListener('click', () => { $('#search').value = ''; re
 document.addEventListener('keydown', event => {
     if (event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) && !location.hash) { event.preventDefault(); $('#search').focus(); }
 });
+let noteSaveSequence = 0;
+let noteDraftUnsaved = false;
+async function saveNotes(values) {
+    const sequence = ++noteSaveSequence;
+    const cloud = usesCloud();
+    noteDraftUnsaved = true;
+    if (cloud) document.querySelectorAll('[data-action=new-note], [data-action=delete-note]').forEach(button => button.disabled = true);
+    if ($('#note-saved')) $('#note-saved').textContent = cloud ? '正在保存到云端…' : '正在本地保存…';
+    try {
+        if (cloud) await account.save('notes', values);
+        else if (!persist('shiyong-notes', values)) throw new Error('本地保存失败，请复制备份。');
+        if (sequence === noteSaveSequence) {
+            noteDraftUnsaved = false;
+            if ($('#note-saved')) $('#note-saved').textContent = cloud ? '已保存到当前账号云端' : '已自动保存到当前浏览器';
+        }
+        return true;
+    } catch (failure) {
+        if ($('#note-saved')) $('#note-saved').textContent = '保存失败，内容尚未保存，请复制备份或继续编辑重试。';
+        toast(failure.message);
+        return false;
+    } finally {
+        if (sequence === noteSaveSequence) {
+            const add = $('[data-action=new-note]'), remove = $('[data-action=delete-note]');
+            if (add) add.disabled = false;
+            if (remove) remove.disabled = !notes.some(note => note.id === selectedNote);
+        }
+    }
+}
+window.addEventListener('beforeunload', event => {
+    if (noteDraftUnsaved || account.unsaved) { event.preventDefault(); event.returnValue = ''; }
+});
 window.addEventListener('hashchange', route);
 renderHome();
+await initializeAccount(() => {
+    notes = usesCloud()
+        ? account.user ? account.workspace().notes : []
+        : readStored('shiyong-notes', [], value => Array.isArray(value));
+    selectedNote = notes[0]?.id;
+    noteDraftUnsaved = false;
+    if (location.hash !== '#account') route();
+});
 route();
 
 // Connection failures must not interrupt local tools or localStorage notes.
@@ -201,4 +260,4 @@ async function refreshBackendConnection() {
     }
 }
 $('#check-backend').addEventListener('click', refreshBackendConnection);
-refreshBackendConnection();
+$('#backend-status').textContent = '未检查后端，本地模式无需连接';
