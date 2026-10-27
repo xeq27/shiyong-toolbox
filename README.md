@@ -1,5 +1,10 @@
 # 拾用 · 个人工具箱
 
+> 本仓库为历史静态工具箱版本。工具箱已迁入 `D:/myJavaWebSite/frontend`，并与原 Vue 前端合为同一工程。
+> 后续功能与维护统一在 [myJavaWebSite 的 frontend](https://github.com/xeq27/myJavaWebSite/tree/codex/ecs-middleware/frontend) 进行。
+> 以下文档保留用于理解历史版本；新的启动方式为 `cd D:/myJavaWebSite/frontend; npm run dev`。
+
+
 七个工具（支持本地使用，待办与备忘录可选登录上云）：JSON 格式化、文本对比、待办清单、备忘录、Base64 编解码、URL 编解码、时间戳转换。
 
 ## 本地使用
