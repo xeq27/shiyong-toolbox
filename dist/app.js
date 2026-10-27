@@ -1,3 +1,7 @@
+/**
+ * 工具箱页面入口：负责工具路由、界面渲染及备忘录交互；访客数据留在本地，后端检查由用户手动触发。
+ * @module
+ */
 import { account, usesCloud, storageDescription, initializeAccount, mountAccount } from './account.js';
 import { mountTodos } from './todos.js';
 import { createNoteId, copyText } from './browser.js';
@@ -13,27 +17,33 @@ const tools = [
     { id: 'url', title: 'URL 编解码', en: 'URL encoder', symbol: '↗', description: '编码或解码 URL 参数。', keywords: 'url encode decode 链接 编码 解码' },
     { id: 'time', title: '时间戳转换', en: 'Timestamp converter', symbol: '◷', description: '日期与时间戳互转，支持秒和毫秒。', keywords: 'timestamp 时间 日期 秒 毫秒' }
 ];
+/** 按选择器查找当前文档中的首个元素，供页面渲染及交互复用。 */
 const $ = selector => document.querySelector(selector);
+/** 将动态文本转义为 HTML 安全文本，防止笔记和对比内容被作为标签解析。 */
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 let notes = readStored('shiyong-notes', [], value => Array.isArray(value) && value.every(note => note && typeof note.id === 'string' && typeof note.title === 'string' && typeof note.content === 'string'));
 let selectedNote = notes[0]?.id;
 let toastTimer;
 let noteTimer;
 
+/** 读取并校验本地 JSON 数据；存储不可读或结构无效时使用调用方提供的默认值。 */
 function readStored(key, fallback, validate) {
     try { const value = JSON.parse(localStorage.getItem(key)); return validate(value) ? value : fallback; }
     catch { return fallback; }
 }
+/** 序列化写入浏览器存储，并在写入失败时提醒用户备份内容。 */
 function persist(key, value) {
     try { localStorage.setItem(key, JSON.stringify(value)); return true; }
     catch { toast('浏览器存储不可用或已满，请复制内容备份。'); return false; }
 }
+/** 显示短暂提示，并取消上一条提示的隐藏计时。 */
 function toast(message) {
     $('#toast').textContent = message;
     $('#toast').classList.add('visible');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), 3000);
 }
+/** 根据搜索词筛选工具卡片，并同步首页数量及空结果状态。 */
 function renderHome() {
     const query = $('#search').value.trim().toLowerCase();
     const visible = tools.filter(tool => `${tool.title} ${tool.keywords}`.toLowerCase().includes(query));
@@ -44,9 +54,11 @@ function renderHome() {
     $('#empty').hidden = visible.length !== 0;
 }
 
+/** 生成可编辑或只读的文本区域模板，供各工具复用。 */
 function editor(label, id, readonly = false) {
     return `<label><span class="field-label">${label}</span><textarea id="${id}" ${readonly ? 'readonly' : ''} spellcheck="false" placeholder="${readonly ? '处理结果将显示在这里…' : '在这里粘贴或输入内容…'}"></textarea></label>`;
 }
+/** 生成 JSON 和编码工具的操作区，按工具类型提供对应按钮与说明。 */
 function transformWorkspace(tool) {
     const isJson = tool.id === 'json';
     return `<div class="panel">
@@ -70,6 +82,7 @@ function transformWorkspace(tool) {
                 : '使用 UTF-8 文本编码，支持中文和 emoji。'}</p>
     </div>`;
 }
+/** 打开指定工具或账户页面，并根据当前存储模式挂载对应工作区。 */
 function openTool(id) {
     if (id === 'account') {
         $('#home').hidden = true;
@@ -104,6 +117,7 @@ function openTool(id) {
     window.scrollTo({ top: 0 });
     $('.back').focus({ preventScroll: true });
 }
+/** 根据当前笔记列表及选中项重建导航和编辑区，动态内容统一转义。 */
 function renderNotes() {
     clearTimeout(noteTimer);
     $('#note-list').innerHTML = notes.map(note => `<button class="note-item ${note.id === selectedNote ? 'active' : ''}" data-note="${escape(note.id)}"><strong>${escape(note.title || '未命名笔记')}</strong><small>${escape(new Date(note.updated).toLocaleDateString('zh-CN'))}</small></button>`).join('');
@@ -111,6 +125,7 @@ function renderNotes() {
     $('#note-editor').innerHTML = note ? `<label><span class="field-label">笔记标题</span><input class="note-title" id="note-title" maxlength="120" placeholder="未命名笔记" value="${escape(note.title)}"></label><label><span class="field-label">笔记内容</span><textarea class="note-content" id="note-content" maxlength="100000" placeholder="从一个想法开始…">${escape(note.content)}</textarea></label>` : '<div class="empty"><h3>留住一闪而过的想法</h3><p>点击「新建笔记」，开始第一条记录。</p></div>';
     $('[data-action="delete-note"]').disabled = !note;
 }
+/** 按地址哈希切换首页、工具页或主内容焦点。 */
 function route() {
     const id = location.hash.slice(1);
     if (id === 'main') {
@@ -202,6 +217,7 @@ document.addEventListener('keydown', event => {
 });
 let noteSaveSequence = 0;
 let noteDraftUnsaved = false;
+/** 按当前模式保存笔记，仅让最新保存操作更新草稿状态；失败时保留未保存提示。 */
 async function saveNotes(values) {
     const sequence = ++noteSaveSequence;
     const cloud = usesCloud();
@@ -243,7 +259,8 @@ await initializeAccount(() => {
 });
 route();
 
-// Connection failures must not interrupt local tools or localStorage notes.
+// 后端连接失败仅更新检查状态，本地工具和本地笔记仍可继续使用。
+/** 由手动检查触发更新 Java 与 MySQL 连通状态，检查期间禁用按钮。 */
 async function refreshBackendConnection() {
     const status = $('#backend-status');
     const button = $('#check-backend');

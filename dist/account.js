@@ -1,3 +1,7 @@
+/**
+ * 账户界面与存储模式协调模块：访客初始化不请求后端，只有已选择云端模式时才尝试恢复连接。
+ * @module
+ */
 import { createAccountClient } from './account-client.js';
 import { createNoteId } from './browser.js';
 import { loadTodos } from './todos.js';
@@ -5,12 +9,16 @@ import { loadTodos } from './todos.js';
 export const account = createAccountClient();
 let cloudIntent = false;
 try { cloudIntent = sessionStorage.getItem('shiyong-cloud-mode') === 'on'; } catch {}
+/** 保存账户状态发布后的通知回调，初始化前默认不执行额外操作。 */
 let stateChanged = () => {};
+/** 判断是否已选择云端模式或存在已连接账户，包括连接待恢复状态。 */
 export const usesCloud = () => cloudIntent || !!account.user;
+/** 返回当前本地或云端模式对应的数据保存说明。 */
 export const storageDescription = () => usesCloud()
     ? '登录后，待办和备忘录保存到当前账号的云端空间。'
     : '未登录，仅保存在当前浏览器，数据不上云。';
 
+/** 更新本次会话的云端模式意图，连接失败时仍可保留该选择。 */
 function markCloud(value) {
     cloudIntent = value;
     try {
@@ -18,6 +26,7 @@ function markCloud(value) {
         else sessionStorage.removeItem('shiyong-cloud-mode');
     } catch {}
 }
+/** 同步账户入口及存储状态说明，并通知工具区重新读取对应数据源。 */
 function publish() {
     document.querySelector('#account-link').textContent = account.user
         ? account.user.username + ' · 云端' : cloudIntent ? '云端连接待恢复' : '登录 / 注册';
@@ -26,14 +35,16 @@ function publish() {
     stateChanged();
 }
 
+/** 注册状态回调，仅在会话已选择云端模式时恢复账户，访客初始化不发请求。 */
 export async function initializeAccount(onChange) {
     stateChanged = onChange;
     if (cloudIntent) {
-        try { await account.restore(); } catch { /* Locked cloud mode must never silently become guest storage. */ }
+        try { await account.restore(); } catch { /* 云端恢复失败时保留云端模式，避免静默切换为访客本地数据。 */ }
     }
     publish();
 }
 
+/** 挂载账户操作面板，协调登录、恢复、退出和经确认的本地内容导入。 */
 export function mountAccount(container) {
     container.innerHTML = `<section class="panel account-panel">
         <h2>账户与数据</h2>
@@ -61,7 +72,9 @@ export function mountAccount(container) {
         <p class="error" id="account-error" role="alert"></p>
         <p class="hint" id="account-result" role="status"></p>
     </section>`;
+    /** 在账户面板内查询元素，避免命中其他工作区的控件。 */
     const find = selector => container.querySelector(selector);
+    /** 根据账户及云端连接状态更新身份提示和操作按钮。 */
     function refresh() {
         find('#account-form').hidden = !!account.user;
         find('#account-identity').textContent = account.user
@@ -70,6 +83,7 @@ export function mountAccount(container) {
         find('#account-import').disabled = !account.user;
         find('#account-logout').disabled = !account.user;
     }
+    /** 统一执行账户操作，展示失败信息并在操作结束后恢复按钮状态。 */
     async function run(operation) {
         find('#account-error').textContent = '';
         container.querySelectorAll('button').forEach(button => button.disabled = true);

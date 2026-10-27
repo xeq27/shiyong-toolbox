@@ -1,3 +1,7 @@
+/**
+ * 工具箱开发与部署服务器：提供前端静态资源，并代理同源 API 与健康检查请求。
+ * @module
+ */
 import http from 'node:http';
 import https from 'node:https';
 import { readFile } from 'node:fs/promises';
@@ -9,12 +13,13 @@ const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript
 const hopHeaders = ['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
     'te', 'trailer', 'transfer-encoding', 'upgrade'];
 
+/** 过滤逐跳头及 Connection 指定的头，仅向上下游转发端到端请求或响应头。 */
 function endToEndHeaders(headers) {
     const excluded = new Set([...hopHeaders, ...(headers.connection || '').toLowerCase().split(/\s*,\s*/)]);
     return Object.fromEntries(Object.entries(headers).filter(([name]) => !excluded.has(name.toLowerCase())));
 }
 
-/** Fixed server-side target keeps credentials and database access out of the browser. */
+/** 创建静态资源服务器及固定目标的后端代理，数据库访问和后端目标配置留在服务端。 */
 export function createToolboxServer({ backendTarget = process.env.BACKEND_TARGET || 'http://127.0.0.1:8080' } = {}) {
     const target = new URL(backendTarget);
     if (!['http:', 'https:'].includes(target.protocol)) throw new Error('BACKEND_TARGET must use HTTP or HTTPS');

@@ -1,4 +1,8 @@
-/** Same-origin cookie authentication. Construction and guest use never make requests. */
+/**
+ * 同源 Cookie 账户客户端：管理云端快照、CSRF 与串行保存；创建客户端及访客本地操作不发起请求。
+ * @module
+ */
+/** 创建同源 Cookie 账户客户端，构造及访客本地使用均不发起请求。 */
 export function createAccountClient({ fetchImpl = (...args) => fetch(...args) } = {}) {
     let user = null;
     let snapshot = null;
@@ -6,8 +10,10 @@ export function createAccountClient({ fetchImpl = (...args) => fetch(...args) } 
     let queue = Promise.resolve();
     let pending = 0;
     let failed = false;
+    /** 复制云端快照及待保存集合，避免调用方直接修改客户端内部数据。 */
     const clone = value => structuredClone(value);
 
+    /** 发送同源 JSON 请求；写操作先取得 CSRF 令牌，并将认证及冲突响应转换为可读错误。 */
     async function request(path, method = 'GET', body) {
         const headers = { Accept: 'application/json' };
         if (method !== 'GET') {
@@ -33,6 +39,7 @@ export function createAccountClient({ fetchImpl = (...args) => fetch(...args) } 
         return payload.data;
     }
 
+    /** 读取并校验云端工作区，在成功获得快照后建立当前账户状态。 */
     async function connect(nextUser) {
         const nextSnapshot = await request('/api/workspace');
         if (!nextSnapshot || !Array.isArray(nextSnapshot.todos) || !Array.isArray(nextSnapshot.notes)) {
@@ -43,6 +50,7 @@ export function createAccountClient({ fetchImpl = (...args) => fetch(...args) } 
         failed = false;
         return user;
     }
+    /** 按队列串行保存工作区，校验账户未切换，并记录待保存及失败状态。 */
     async function persist(partial) {
         if (!user) throw new Error('请先登录。');
         const owner = user.id;
@@ -60,30 +68,38 @@ export function createAccountClient({ fetchImpl = (...args) => fetch(...args) } 
         finally { pending--; }
     }
     return {
+        /** 返回当前已连接账户；尚未连接或已清除时为 null。 */
         get user() { return user; },
+        /** 标识是否仍有排队中的保存或已失败而未恢复的保存。 */
         get unsaved() { return pending > 0 || failed; },
+        /** 返回当前账户工作区的副本，未连接账户时拒绝读取。 */
         workspace() {
             if (!user) throw new Error('请先登录。');
             return clone(snapshot);
         },
+        /** 在无正在保存的操作时，读取服务器会话并重新连接云端工作区。 */
         async restore() {
             if (pending) throw new Error('正在保存，请稍后重试。');
             return connect(await request('/api/auth/me'));
         },
+        /** 注册账户，仅返回注册结果，由调用方决定后续登录。 */
         async register(username, password) {
             return request('/api/auth/register', 'POST', { username, password });
         },
+        /** 校验当前无待保存操作，完成登录后刷新 CSRF 状态并加载云端工作区。 */
         async login(username, password) {
             if (pending) throw new Error('正在保存，请稍后重试。');
             const nextUser = await request('/api/auth/login', 'POST', { username, password });
             csrf = null;
             return connect(nextUser);
         },
+        /** 保存指定的待办或笔记集合，并返回服务器确认后的集合。 */
         async save(collection, values) {
             if (!['todos', 'notes'].includes(collection)) throw new Error('无效的数据类型。');
             const result = await persist({ [collection]: clone(values) });
             return result[collection];
         },
+        /** 将调用方提供的本地集合追加到当前云端快照，通过保存队列持久化。 */
         async importCollections(todos, notes) {
             if (!user) throw new Error('请先登录。');
             await persist({
@@ -91,6 +107,7 @@ export function createAccountClient({ fetchImpl = (...args) => fetch(...args) } 
                 notes: [...snapshot.notes, ...clone(notes)]
             });
         },
+        /** 等待已有保存完成后注销服务器会话；存在保存失败时保留当前账户状态。 */
         async logout() {
             await queue;
             if (failed) throw new Error('有未保存的云端内容，请先保存或复制备份。');
@@ -99,6 +116,7 @@ export function createAccountClient({ fetchImpl = (...args) => fetch(...args) } 
             snapshot = null;
             csrf = null;
         },
+        /** 仅清除客户端账户和快照以切换本地模式，不注销服务器会话或发起请求。 */
         forget() {
             if (pending) throw new Error('正在保存，请稍后切换。');
             user = null;

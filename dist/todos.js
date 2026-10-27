@@ -1,9 +1,13 @@
+/**
+ * 待办工作区模块：管理校验、排序、渲染与保存；未传入云端适配器时仅使用本地存储，不请求后端。
+ * @module
+ */
 import { createNoteId } from './browser.js';
 
 const STORAGE_KEY = 'shiyong-todos';
 const TEXT_LIMIT = 280;
 
-/** Validate input before it can become a saved task. */
+/** 校验并规范化待办文本，构造带标识且默认未完成的待办。 */
 export function createTodo(text, id = createNoteId()) {
     const value = text.trim();
     if (!value) throw new Error('请输入待办内容。');
@@ -11,7 +15,7 @@ export function createTodo(text, id = createNoteId()) {
     return { id, text: value, done: false };
 }
 
-/** Reject malformed stored data without silently overwriting it. */
+/** 读取并校验本地待办结构和标识唯一性，数据异常时拒绝读取以避免静默覆盖。 */
 export function loadTodos(storage) {
     const raw = storage.getItem(STORAGE_KEY);
     if (raw === null) return [];
@@ -27,15 +31,17 @@ export function loadTodos(storage) {
     return todos.map(({ id, text, done }) => ({ id, text, done }));
 }
 
+/** 将待办集合序列化写入指定存储，写入异常交由工作区处理。 */
 export function saveTodos(storage, todos) {
     storage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
 
+/** 按未完成在前、已完成在后返回新数组，各分组保持原有顺序。 */
 export function sortTodos(todos) {
     return [...todos.filter(todo => !todo.done), ...todos.filter(todo => todo.done)];
 }
 
-/** Own the todo workspace; storage and DOM errors remain visible to the user. */
+/** 挂载待办交互及保存流程；默认仅访问本地存储，云端行为由显式传入的适配器提供。 */
 export function mountTodos(container, remote = null) {
     container.innerHTML = `<section class="panel todo-panel" aria-label="待办清单">
         <form id="todo-form" class="todo-form">
@@ -54,6 +60,7 @@ export function mountTodos(container, remote = null) {
         <div class="empty" id="todo-empty"><h3>把要做的事，先记下来</h3><p>完成一件，勾掉一件。</p></div>
         <p class="hint">自动保存在当前浏览器，不同设备之间不会同步。清除网站数据会删除待办。</p>
     </section>`;
+    /** 在当前待办工作区内查询控件，避免访问其他面板中的同类元素。 */
     const find = selector => container.querySelector(selector);
     const input = find('#todo-input');
     if (remote) {
@@ -75,6 +82,7 @@ export function mountTodos(container, remote = null) {
         container.querySelectorAll('button, input[type=checkbox]').forEach(control => control.disabled = true);
     }
 
+    /** 安全构建待办行与操作按钮，并更新完成统计和空列表提示。 */
     function renderList() {
         const list = find('#todo-list');
         list.replaceChildren();
@@ -111,6 +119,7 @@ export function mountTodos(container, remote = null) {
         find('#todo-empty').hidden = todos.length > 0 || !ready;
     }
 
+    /** 退出编辑状态并恢复新建待办的输入及按钮说明。 */
     function resetEditor() {
         editingId = null;
         input.value = '';
@@ -119,6 +128,7 @@ export function mountTodos(container, remote = null) {
         find('#todo-cancel').hidden = true;
     }
 
+    /** 先保存候选集合，成功后再更新列表；失败时保留原集合和用户输入。 */
     async function commit(nextTodos) {
         find('#todo-submit').disabled = true;
         try {

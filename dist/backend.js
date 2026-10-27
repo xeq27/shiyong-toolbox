@@ -1,4 +1,8 @@
-/** Health requests contain no tool input or locally stored notes. */
+/**
+ * 后端连通性检查模块：分别探测 Java 健康端点和数据库健康端点，不发送工具输入或本地内容。
+ * @module
+ */
+/** 读取并校验健康端点状态，请求不携带工具输入或本地笔记。 */
 async function readHealth(path, origin, timeoutMs) {
     const response = await fetch(origin ? new URL(path, origin) : path, {
         headers: { Accept: 'application/json' },
@@ -13,7 +17,7 @@ async function readHealth(path, origin, timeoutMs) {
     return health.status;
 }
 
-/** A responding Java process and an available database are different states. */
+/** 并行检查 Java 和数据库；Java 端点有有效响应与数据库状态为 UP 分别判断。 */
 export async function checkBackendConnection({ origin = '', timeoutMs = 15000 } = {}) {
     const [javaHealth, databaseHealth] = await Promise.allSettled([
         readHealth('/actuator/health', origin, timeoutMs),

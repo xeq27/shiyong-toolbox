@@ -1,4 +1,8 @@
-/** Tokenize JSON without converting numeric literals to JavaScript Number values. */
+/**
+ * 无损 JSON 处理模块：保留数字字面量，严格校验语法，并在格式化时兼容转义字符串内的原始控制字符。
+ * @module
+ */
+/** 对 JSON 分词而不将数字字面量转为 Number，避免精度丢失或溢出。 */
 function tokenizeJson(input, repairControls) {
     if (!input.trim()) throw new Error('请先输入 JSON 内容。');
     const tokens = [];
@@ -24,7 +28,7 @@ function tokenizeJson(input, repairControls) {
                     break;
                 }
                 if (stringCharacter === '\\') {
-                    // Preserve existing escapes; JSON.parse below rejects invalid or incomplete ones.
+                    // 保留已有转义，下方使用 JSON.parse 拒绝非法或不完整的转义。
                     token += stringCharacter;
                     if (position < input.length) token += input[position++];
                 } else if (stringCharacter.charCodeAt(0) < 32 && repairControls) {
@@ -56,22 +60,23 @@ function tokenizeJson(input, repairControls) {
         tokens.push({ type: numberMatch ? 'number' : 'literal', text });
         position += text.length;
     }
-    // Validate the complete grammar. Numeric placeholders prevent rounding and overflow;
-    // token boundaries remain separated so malformed numbers such as 01 cannot become valid.
+    // 通过数字占位校验完整语法，避免舍入或溢出。
+    // 保留词元间隔，确保 01 等非法数字不会因拼接而通过校验。
     JSON.parse(tokens.map(token => token.type === 'number' ? '0' : token.text).join(' '));
     return { tokens, controlCount };
 }
 
-/** Validate standard JSON strictly, including raw control characters inside strings. */
+/** 严格校验标准 JSON，包括拒绝字符串内部未经转义的原始控制字符。 */
 export function validateJson(input) {
     tokenizeJson(input, false);
 }
 
-/** Format validated tokens and report the only automatic repair: escaping raw string controls. */
+/** 格式化已校验词元并保留数字原文；自动兼容处理仅转义字符串内的原始控制字符。 */
 export function formatJsonDetailed(input, compact = false) {
     const { tokens, controlCount } = tokenizeJson(input, true);
     const parts = [];
     let depth = 0;
+    /** 按压缩开关及当前嵌套深度生成分隔空白，不改写任何词元内容。 */
     const newline = () => compact ? '' : '\n' + '    '.repeat(depth);
     for (let index = 0; index < tokens.length; index++) {
         const text = tokens[index].text;

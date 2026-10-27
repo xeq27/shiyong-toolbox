@@ -1,12 +1,17 @@
+/**
+ * 浏览器本地数据转换模块：提供 JSON、文本编码、逐行对比和时间转换，不上传处理内容。
+ * @module
+ */
 import { formatJsonDetailed } from './json.js';
 
 export { formatJsonDetailed, validateJson } from './json.js';
 
-/** Browser-local transforms. JSON preserves numeric literals and escapes raw string controls. */
+/** 返回 JSON 格式化或压缩结果，保留数字字面量并转义字符串内的原始控制字符。 */
 export function formatJson(input, compact = false) {
     return formatJsonDetailed(input, compact).output;
 }
 
+/** 执行 URL 参数或 UTF-8 Base64 编解码，非法编码由原生解码器抛出错误。 */
 export function encodeText(input, mode, decode = false) {
     if (mode === 'url') return decode ? decodeURIComponent(input) : encodeURIComponent(input);
     if (decode) {
@@ -19,7 +24,7 @@ export function encodeText(input, mode, decode = false) {
     return btoa(binary);
 }
 
-/** LCS preserves order and repeated lines. Bound work for long inputs. */
+/** 使用最长公共子序列逐行对比，保留重复行与顺序，并限制输入规模以控制计算量。 */
 export function diffLines(left, right) {
     const before = left === '' ? [] : left.split('\n');
     const after = right === '' ? [] : right.split('\n');
@@ -46,6 +51,7 @@ export function diffLines(left, right) {
     return lines;
 }
 
+/** 按秒或毫秒解释整数时间戳，返回 UTC 和当前设备本地时间。 */
 export function timestampToDate(input, unit) {
     if (!/^-?\d+$/.test(input.trim())) throw new Error('请输入整数时间戳。');
     const date = new Date(Number(input) * (unit === 's' ? 1000 : 1));
@@ -53,6 +59,7 @@ export function timestampToDate(input, unit) {
     return { iso: date.toISOString(), local: date.toLocaleString('zh-CN', { hour12: false }) };
 }
 
+/** 将日期输入转换为秒及毫秒时间戳，无效日期直接报错。 */
 export function dateToTimestamp(input) {
     if (!input) throw new Error('请选择日期和时间。');
     const milliseconds = new Date(input).getTime();
